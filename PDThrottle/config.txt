@@ -1,0 +1,5 @@
+# PDThrottle: Blueprint class path, then seconds between ticks (instead of every frame)
+#
+# The car's two in-dash screens (BP_InteractCameraComponent) re-render their UI widgets into textures every frame.
+# 10 updates a second looks the same and gave 36 -> 44 fps on the Steam Deck (Low, cheaper mirrors, 67% render scale).
+/Game/Characters/Player/Components/BP_InteractCameraComponent.BP_InteractCameraComponent_C 0.1
