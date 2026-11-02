@@ -20,6 +20,10 @@ Measured on a Steam Deck LCD (Proton 11, sitting in the car in the Deep Zone for
 | **This setup**: Low + cheaper mirrors, 67% render scale, PDThrottle mod | **44.4** (1% low 24) |
 | Low + cheaper mirrors, 100% render scale, PDThrottle mod | 33.8 |
 
+**Anti-aliasing.** The Low preset switches anti-aliasing off, which looks very jagged at 67%, so the installer turns TAA back on
+(`sg.AntiAliasingQuality=2`). Measured with the mod at 67%: no AA 45.5 fps, TAA 44.4, FSR 4 Lite (OptiScaler, Quality) 31.6,
+FSR 4 Lite Balanced 30.8. FSR 4 Lite has a fixed cost at output resolution that the Deck can't afford, so TAA is the better deal.
+
 Runs of the same setup vary by about ±2 fps (weather and camera direction change between runs). Lighter places (daytime, the
 garage) run faster. The 1% lows are still in the mid 20s, so a 30 fps cap is the safe choice for now.
 

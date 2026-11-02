@@ -159,6 +159,8 @@ def setk(t, k, v):
 # Low preset: on the Deck, Epic 12 fps, High 12, Medium 25, Low 25 (before the mirror settings)
 for g in "ViewDistance AntiAliasing Shadow PostProcess Texture Effects Foliage Shading".split():
     t = setk(t, "sg." + g + "Quality", "0")
+# Low turns anti-aliasing off, which looks very jagged at 67%; TAA costs ~1 fps (FSR 4 Lite via OptiScaler cost ~13)
+t = setk(t, "sg.AntiAliasingQuality", "2")
 t = setk(t, "sg.ResolutionQuality", "%d.000000" % int(scale))
 # The car's mirrors render the scene again; these took Low from 25 to 34 fps
 for k, v in [("MirrorResolutionScale", "0.500000"), ("bMirrorGrassRendering", "False"), ("bMirrorFogRendering", "False"),
@@ -166,7 +168,7 @@ for k, v in [("MirrorResolutionScale", "0.500000"), ("bMirrorGrassRendering", "F
     t = setk(t, k, v)
 open(p, "w", newline="").write(t.replace("\n", "\r\n") if crlf else t)
 PY
-        say "set Low preset, cheaper mirrors, no headlight shadows, render scale $SCALE%"
+        say "set Low preset with TAA, cheaper mirrors, no headlight shadows, render scale $SCALE%"
     fi
 fi
 
