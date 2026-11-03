@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Pacific Drive on Steam Deck: faster settings + a UE4SS mod that stops the car's dash screens re-rendering every frame
 #
-#   ./install.sh [--scale PERCENT] [--no-settings] [--game-dir DIR]   install (or update)
-#      --scale: render scale, 50 to 100 (default 67)
+#   ./install.sh [--framegen] [--scale PERCENT] [--no-settings] [--game-dir DIR]   install (or update)
+#      --framegen: 60 fps with lsfg-vk frame generation (needs lsfg-vk set up, see the README): the game is capped
+#                  at 30 and every frame is doubled, so it can render sharper (100% scale, Epic textures)
+#      --scale: render scale, 50 to 100 (default 67, or 100 with --framegen)
 #      --no-settings: only install the mod, leave the graphics settings alone
 #   ./install.sh --uninstall [--game-dir DIR]                         remove it and restore the backup
 #
@@ -24,18 +26,20 @@ OURS=(dwmapi.dll UE4SS.dll UE4SS-settings.ini UE4SS.log Mods/PDThrottle)
 say() { printf '\e[1m[pacific-drive-deck]\e[0m %s\n' "$*"; }
 die() { printf '[pacific-drive-deck] error: %s\n' "$*" >&2; exit 1; }
 
-SCALE=67; SETTINGS=1; GAME_DIR=""; UNINSTALL=0
+SCALE=""; SETTINGS=1; GAME_DIR=""; UNINSTALL=0; FRAMEGEN=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --scale) SCALE=$2; shift ;;
         --no-settings) SETTINGS=0 ;;
+        --framegen) FRAMEGEN=1 ;;
         --game-dir) GAME_DIR=$2; shift ;;
         --uninstall) UNINSTALL=1 ;;
-        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
         *) die "unknown option: $1" ;;
     esac
     shift
 done
+[ -n "$SCALE" ] || { [ $FRAMEGEN = 1 ] && SCALE=100 || SCALE=67; }
 [[ "$SCALE" =~ ^[0-9]+$ ]] && [ "$SCALE" -ge 50 ] && [ "$SCALE" -le 100 ] || die "--scale must be 50 to 100"
 
 STEAM="$HOME/.local/share/Steam"
@@ -58,9 +62,33 @@ for lib in "${LIBS[@]}"; do
 done
 CONFIG="$PFX/drive_c/users/steamuser/AppData/Local/PenDriverPro/Saved/Config/WindowsNoEditor"
 BACKUP="$HOME/pacific-drive-deck-backup"
+LSFG_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/lsfg-vk/conf.toml"
 say "game: $GAME_DIR"
 
 pgrep -f PenDriverPro-Win64-Shipping.exe >/dev/null && die "close the game first"
+
+# lsfg-vk profile for --framegen (picked by LSFG_PROCESS=pacific-drive in the launch options). lsfg_profile add|remove
+lsfg_profile() {
+    python3 - "$LSFG_CONF" "$1" <<'PY'
+import re, sys
+p, mode = sys.argv[1], sys.argv[2]
+t = open(p).read()
+t = re.sub(r"\n*# BEGIN pacific-drive-steamdeck\n.*?# END pacific-drive-steamdeck\n", "\n", t, flags=re.S)
+if mode == "add":
+    t = t.rstrip("\n") + "\n\n" + "\n".join([
+        "# BEGIN pacific-drive-steamdeck",
+        "[[game]]",
+        "# Pacific Drive: 2x frame generation on a 30 fps base",
+        'exe = "pacific-drive"',
+        "multiplier = 2",
+        "flow_scale = 0.5",
+        "performance_mode = true",
+        "hdr_mode = false",
+        'experimental_present_mode = "fifo"',
+        "# END pacific-drive-steamdeck"]) + "\n"
+open(p, "w").write(t)
+PY
+}
 
 # --- uninstall ---
 if [ $UNINSTALL = 1 ]; then
@@ -76,7 +104,12 @@ if [ $UNINSTALL = 1 ]; then
     fi
     if [ -f "$BACKUP/GameUserSettings.ini" ] && [ -n "$PFX" ]; then
         cp "$BACKUP/GameUserSettings.ini" "$CONFIG/GameUserSettings.ini"
+        [ -f "$BACKUP/Engine.ini" ] && cp "$BACKUP/Engine.ini" "$CONFIG/Engine.ini"
         say "restored your graphics settings"
+    fi
+    if [ -f "$LSFG_CONF" ] && grep -q '^# BEGIN pacific-drive-steamdeck' "$LSFG_CONF"; then
+        lsfg_profile remove
+        say "removed the pacific-drive profile from $LSFG_CONF"
     fi
     say "done. Remove the WINEDLLOVERRIDES part of the launch options in Steam too."
     exit 0
@@ -89,6 +122,12 @@ if [ ! -d "$BACKUP" ]; then
     [ -f "$WIN64/Mods/mods.txt" ] && cp "$WIN64/Mods/mods.txt" "$BACKUP/mods.txt"
     [ -n "$PFX" ] && [ -f "$CONFIG/GameUserSettings.ini" ] && cp "$CONFIG/GameUserSettings.ini" "$BACKUP/GameUserSettings.ini"
     say "backed up the files we replace to $BACKUP"
+fi
+# Engine.ini and the lsfg-vk config are only changed by --framegen (added later, so older backups lack them)
+[ -n "$PFX" ] && [ -f "$CONFIG/Engine.ini" ] && [ ! -f "$BACKUP/Engine.ini" ] && cp "$CONFIG/Engine.ini" "$BACKUP/Engine.ini"
+if [ $FRAMEGEN = 1 ]; then
+    [ -f "$LSFG_CONF" ] || die "lsfg-vk is not set up ($LSFG_CONF is missing), see the README's frame generation section"
+    [ -f "$BACKUP/lsfg-conf.toml" ] || cp "$LSFG_CONF" "$BACKUP/lsfg-conf.toml"
 fi
 
 # --- downloads ---
@@ -141,9 +180,9 @@ if [ $SETTINGS = 1 ]; then
     if [ -z "$PFX" ] || [ ! -f "$CONFIG/GameUserSettings.ini" ]; then
         say "skipped the graphics settings: start the game once (to the main menu), then run this again"
     else
-        python3 - "$CONFIG/GameUserSettings.ini" "$SCALE" <<'PY'
+        python3 - "$CONFIG/GameUserSettings.ini" "$SCALE" "$FRAMEGEN" <<'PY'
 import re, sys
-p, scale = sys.argv[1], sys.argv[2]
+p, scale, framegen = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
 t = open(p, newline="").read()
 crlf = "\r\n" in t  # the game writes Windows line endings; keep them
 t = t.replace("\r\n", "\n")
@@ -161,6 +200,11 @@ for g in "ViewDistance AntiAliasing Shadow PostProcess Texture Effects Foliage S
     t = setk(t, "sg." + g + "Quality", "0")
 # Low turns anti-aliasing off, which looks very jagged at 67%; TAA costs ~1 fps (FSR 4 Lite via OptiScaler cost ~13)
 t = setk(t, "sg.AntiAliasingQuality", "2")
+# With frame generation the game only has to hold 30, which leaves room for these (still 60 shown on the Deck);
+# Medium shadows did not fit (the 30 fps base broke constantly)
+if framegen:
+    for g, v in [("Texture", "3"), ("PostProcess", "1"), ("Effects", "1")]:
+        t = setk(t, "sg." + g + "Quality", v)
 t = setk(t, "sg.ResolutionQuality", "%d.000000" % int(scale))
 # The car's mirrors render the scene again; these took Low from 25 to 34 fps
 for k, v in [("MirrorResolutionScale", "0.500000"), ("bMirrorGrassRendering", "False"), ("bMirrorFogRendering", "False"),
@@ -169,7 +213,42 @@ for k, v in [("MirrorResolutionScale", "0.500000"), ("bMirrorGrassRendering", "F
 open(p, "w", newline="").write(t.replace("\n", "\r\n") if crlf else t)
 PY
         say "set Low preset with TAA, cheaper mirrors, no headlight shadows, render scale $SCALE%"
+        # Light sharpening against TAA softness (frame generation preset only). The game rewrites Engine.ini on exit
+        # and may drop our marker comments, so stray Sharpen lines are removed too
+        python3 - "$CONFIG/Engine.ini" "$FRAMEGEN" <<'PY'
+import re, sys
+p, framegen = sys.argv[1], sys.argv[2] == "1"
+try:
+    t = open(p, newline="").read()
+except FileNotFoundError:
+    t = ""
+crlf = "\r\n" in t
+t = re.sub(r"\n*; BEGIN pacific-drive-steamdeck\n.*?; END pacific-drive-steamdeck\n", "\n", t.replace("\r\n", "\n"), flags=re.S)
+t = re.sub(r"(?m)^r\.Tonemapper\.Sharpen=.*\n", "", t)
+if framegen:
+    t = t.rstrip("\n") + "\n\n; BEGIN pacific-drive-steamdeck\n[SystemSettings]\nr.Tonemapper.Sharpen=0.3\n; END pacific-drive-steamdeck\n"
+open(p, "w", newline="").write(t.replace("\n", "\r\n") if crlf else t)
+PY
+        [ $FRAMEGEN = 1 ] && say "frame generation preset: Epic textures, Medium effects and post-processing, light sharpening"
     fi
+fi
+if [ $FRAMEGEN = 1 ]; then
+    lsfg_profile add
+    say "added the pacific-drive profile (2x) to $LSFG_CONF"
+fi
+
+if [ $FRAMEGEN = 1 ]; then cat <<EOF
+
+Done. Now in Steam: right click Pacific Drive > Properties > Launch Options:
+
+    ENABLE_GAMESCOPE_WSI=0 DXVK_HDR=0 LSFG_PROCESS=pacific-drive VKD3D_FRAME_RATE=30 WINEDLLOVERRIDES="dwmapi=n,b" %command%
+
+VKD3D_FRAME_RATE=30 caps the game at 30 and lsfg-vk doubles it to 60. Don't also use the Decky plugin's ~/lsfg
+launch option or Decky Framegen for this game, and leave Steam's frame limit off.
+
+To undo everything: bash install.sh --uninstall
+EOF
+exit 0
 fi
 
 cat <<EOF

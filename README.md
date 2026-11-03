@@ -1,4 +1,4 @@
-# Pacific Drive on Steam Deck: from 12 to 44 fps
+# Pacific Drive on Steam Deck: from 12 to 44 fps (60 with frame generation)
 
 > **Work in progress: not fully tested yet.** The numbers below come from automated benchmarks of one scene on one Steam Deck.
 > Nobody has played a full session with this setup yet; that is next. Back up your saves, and please open an issue if
@@ -23,6 +23,20 @@ Measured on a Steam Deck LCD (Proton 11, sitting in the car in the Deep Zone for
 **Anti-aliasing.** The Low preset switches anti-aliasing off, which looks very jagged at 67%, so the installer turns TAA back on
 (`sg.AntiAliasingQuality=2`). Measured with the mod at 67%: no AA 45.5 fps, TAA 44.4, FSR 4 Lite (OptiScaler, Quality) 31.6,
 FSR 4 Lite Balanced 30.8. FSR 4 Lite has a fixed cost at output resolution that the Deck can't afford, so TAA is the better deal.
+
+**60 fps with frame generation (optional, `--framegen`).** With [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk) the game is
+capped at 30 and every frame is doubled, so it shows 60. Holding 30 leaves room to make it sharper, so this preset renders at
+100% with Epic textures, Medium effects and post-processing and light sharpening. Input lag is that of a 30 fps game.
+Same scene, 30 s each, "drops" = moments the real frame rate fell below 30:
+
+| Setup (all with PDThrottle, TAA, 2x frame generation) | Shown fps | Drops below 30 |
+|---|---:|---:|
+| 67%, Low, sharpen 0.8 | 60.0 | 7 |
+| 100%, Low, sharpen 0.3 | 59.8 | 15 |
+| **`--framegen`**: 100%, Epic textures, Medium effects + post-processing, sharpen 0.3 | **59.9** | **12** |
+| the same + Medium shadows | 53.3 | 230 |
+
+The remaining drops are the game's own CPU spikes and happen at every setting; shadows are the one thing that doesn't fit.
 
 Runs of the same setup vary by about ±2 fps (weather and camera direction change between runs). Lighter places (daytime, the
 garage) run faster. The 1% lows are still in the mid 20s, so a 30 fps cap is the safe choice for now.
@@ -56,7 +70,8 @@ You need: the game from Steam, started once (to the main menu) so its settings f
    ```
 
    For a sharper image at fewer fps: `bash install.sh --scale 100` (50 to 100). To only install the mod and keep your own
-   graphics settings: `bash install.sh --no-settings`.
+   graphics settings: `bash install.sh --no-settings`. For 60 fps with frame generation: `bash install.sh --framegen` (set up
+   lsfg-vk first, see below); it prints the launch options to use instead of step 3, and skip step 4's 30 fps cap.
 3. In Steam, right click the game > Properties > **Launch Options**:
 
    ```
@@ -73,6 +88,19 @@ You need: the game from Steam, started once (to the main menu) so its settings f
 
 The settings are the game's own, so you can change any of them in its menu afterwards (Graphics > Advanced has the mirror
 options). The script backs up what it changes to `~/pacific-drive-deck-backup`.
+
+**Frame generation setup (`--framegen`):** buy and install
+[Lossless Scaling](https://store.steampowered.com/app/993090/Lossless_Scaling/) from Steam (lsfg-vk uses its
+`Lossless.dll`), then install lsfg-vk, for example with the Decky plugin
+[decky-lsfg-vk](https://github.com/xXJSONDeruloXx/decky-lsfg-vk), and open the plugin once so it writes
+`~/.config/lsfg-vk/conf.toml`. The installer adds a `pacific-drive` profile to that file (2x, flow scale 0.5, performance
+mode), and the launch options it prints select that profile and cap the game at 30:
+
+```
+ENABLE_GAMESCOPE_WSI=0 DXVK_HDR=0 LSFG_PROCESS=pacific-drive VKD3D_FRAME_RATE=30 WINEDLLOVERRIDES="dwmapi=n,b" %command%
+```
+
+Don't add the plugin's own `~/lsfg %command%` launch option or Decky Framegen on top, and leave the Steam frame limit off.
 
 **Uninstall:** `bash install.sh --uninstall`, then remove the `WINEDLLOVERRIDES` part from the launch options.
 
@@ -103,4 +131,6 @@ For other modders, `tools/` has what found the dash screens:
 ## Credits
 
 - [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) (MIT) by the UE4SS team, downloaded by the install script from its release.
+- [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk) by PancakeTAS, which runs Lossless Scaling's frame generation on Linux
+  (optional, installed separately).
 - Pacific Drive is by Ironwood Studios. This repo contains no game files.
