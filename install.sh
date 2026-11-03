@@ -149,11 +149,11 @@ fi
 
 # --- install ---
 cp "$TMP/ue4ss/dwmapi.dll" "$TMP/ue4ss/UE4SS.dll" "$WIN64/"
-# UE4SS settings: no debug console windows (they open separate windows under Proton), and no Blueprint call hooks
-# (PDThrottle doesn't need them, and they add overhead to every Blueprint function call)
+# UE4SS settings: no debug console windows (they open separate windows under Proton), and none of UE4SS's optional
+# hooks: PDThrottle doesn't need them, the Blueprint call hooks add overhead to every Blueprint function call, and with
+# the other four on the game crashed every time at the first "kick the logs" scene of a new game (camera shake)
 sed -e 's/^ConsoleEnabled = .*/ConsoleEnabled = 0/' -e 's/^GuiConsoleEnabled = .*/GuiConsoleEnabled = 0/' \
-    -e 's/^HookProcessInternal = .*/HookProcessInternal = 0/' \
-    -e 's/^HookProcessLocalScriptFunction = .*/HookProcessLocalScriptFunction = 0/' \
+    -E -e 's/^(HookProcessInternal|HookProcessLocalScriptFunction|HookInitGameState|HookCallFunctionByNameWithArguments|HookBeginPlay|HookLocalPlayerExec)( *)= .*/\1\2= 0/' \
     "$TMP/ue4ss/UE4SS-settings.ini" > "$WIN64/UE4SS-settings.ini"
 mkdir -p "$WIN64/Mods"
 rm -rf "$WIN64/Mods/PDThrottle"

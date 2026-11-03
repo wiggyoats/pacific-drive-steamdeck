@@ -117,6 +117,11 @@ and stalls it for ~100 ms each time.
 
 If a game update renames the dash screen class, the mod simply stops finding it and changes nothing.
 
+The installer switches off all of UE4SS's optional hooks (`[Hooks]` in `UE4SS-settings.ini`). With UE4SS's default
+hooks on, a new game crashed every time at the first scene where you kick logs out of the way (inside the game's camera
+shake code), even with PDThrottle disabled; with them off it plays through. If you installed before 2026-11-03, run the
+installer again to get this fix.
+
 ## Tools
 
 For other modders, `tools/` has what found the dash screens:
