@@ -1,8 +1,7 @@
 # Pacific Drive on Steam Deck: from 12 to 44 fps (60 with frame generation)
 
-> **Work in progress: not fully tested yet.** The numbers below come from automated benchmarks of one scene on one Steam Deck.
-> Nobody has played a full session with this setup yet; that is next. Back up your saves, and please open an issue if
-> something looks or behaves wrong.
+> Play-tested on my own Steam Deck LCD. Back up your saves first, and please open an issue if something looks or
+> behaves wrong on yours.
 
 Pacific Drive runs badly on the Steam Deck, even though it doesn't look like a demanding game. This sets it up to run at
 **~44 fps** in a heavy scene, from 12 fps at the settings the Deck picks by default, with one install script and a small
