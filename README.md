@@ -38,7 +38,7 @@ Same scene, 30 s each, "drops" = moments the real frame rate fell below 30:
 The remaining drops are the game's own CPU spikes and happen at every setting; shadows are the one thing that doesn't fit.
 
 Runs of the same setup vary by about ±2 fps (weather and camera direction change between runs). Lighter places (daytime, the
-garage) run faster. The 1% lows are still in the mid 20s, so a 30 fps cap is the safe choice for now.
+garage) run faster. The 1% lows are still in the mid 20s, so without frame generation expect some unevenness (see step 4 of the install).
 
 ## Why the game runs badly, and what this does
 
@@ -70,7 +70,7 @@ You need: the game from Steam, started once (to the main menu) so its settings f
 
    For a sharper image at fewer fps: `bash install.sh --scale 100` (50 to 100). To only install the mod and keep your own
    graphics settings: `bash install.sh --no-settings`. For 60 fps with frame generation: `bash install.sh --framegen` (set up
-   lsfg-vk first, see below); it prints the launch options to use instead of step 3, and skip step 4's 30 fps cap.
+   lsfg-vk first, see below); it prints the launch options to use instead of step 3, and skip step 4.
 3. In Steam, right click the game > Properties > **Launch Options**:
 
    ```
@@ -83,7 +83,10 @@ You need: the game from Steam, started once (to the main menu) so its settings f
    WINEDLLOVERRIDES="dwmapi=n,b" ~/fgmod/fgmod %command%
    ```
 
-4. Back in Game Mode, cap the frame rate at 30 in the performance overlay (the `...` button).
+4. Back in Game Mode, leave the frame rate uncapped. Don't cap at 30 with PDThrottle in: it makes the dash screens do all
+   their drawing in one frame, 10 times a second, and a 30 cap turns that into a regular judder (frames of about 53, 20 and
+   27 ms in a repeating pattern). If you want a steady 30 without frame generation, use the settings without the mod:
+   remove the launch options from step 3, then cap at 30 in the performance overlay (the `...` button).
 
 The settings are the game's own, so you can change any of them in its menu afterwards (Graphics > Advanced has the mirror
 options). The script backs up what it changes to `~/pacific-drive-deck-backup`.
